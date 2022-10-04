@@ -1,5 +1,6 @@
 # haimtran 01 OCT 2022
 # sagemaker pca test
+# use sagemaker estimator base
 # content_type=text/csv; label_size=0
 
 import json
