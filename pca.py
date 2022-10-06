@@ -17,7 +17,7 @@ from sagemaker.processing import (
     ProcessingOutput,
 )
 
-
+# environ variables and configuration
 if "SAGEMAKER_ROLE" in os.environ and "BUCKET_NAME" in os.environ:
     pass
 else:
@@ -27,10 +27,17 @@ else:
         os.environ["SAGEMAKER_BUCKET"] = config["SAGEMAKER_BUCKET"]
         os.environ["REGION"] = config["REGION"]
 
+# data and source code path for sagemaker containers
 container_base_path = "/opt/ml/processing"
-data_input_path = f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-raw-data/171A_raw.csv'
-data_output_path = f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-processed-data'
-code_input_path = f's3://{os.environ["SAGEMAKER_BUCKET"]}/code/process_raw_data.py'
+data_input_path = (
+    f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-raw-data'
+)
+data_output_path = (
+    f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-processed-data'
+)
+code_input_path = (
+    f's3://{os.environ["SAGEMAKER_BUCKET"]}/code/process_raw_data.py'
+)
 
 
 def process_data():
@@ -110,9 +117,9 @@ def train_pca_model():
 
 if __name__ == "__main__":
     # upload process_raw_data.py to s3
-    boto3.resource("s3").Bucket(os.environ["SAGEMAKER_BUCKET"]).upload_file(
-        "./process_raw_data.py", "code/process_raw_data.py"
-    )
+    boto3.resource("s3").Bucket(
+        os.environ["SAGEMAKER_BUCKET"]
+    ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
     # processing job
     process_data()
     # train_pca_model()
