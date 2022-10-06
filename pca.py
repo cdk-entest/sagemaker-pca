@@ -10,7 +10,6 @@ from time import strftime
 import boto3
 import sagemaker
 from sagemaker import image_uris
-from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.inputs import TrainingInput
 from sagemaker.processing import (
     ProcessingInput,
