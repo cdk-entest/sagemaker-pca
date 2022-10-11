@@ -75,9 +75,9 @@ def process_data():
         ],
         outputs=[
             ProcessingOutput(
-                source=f"{container_base_path}/output/train",
+                source=f"{container_base_path}/output/",
                 destination=f"{data_output_path}",
-                output_name="train",
+                output_name="preprocess",
             )
         ],
     )
@@ -120,13 +120,16 @@ def get_trained_model():
     """
     get the trained model
     """
-    sg = boto3.client('sagemaker')
+    sg = boto3.client("sagemaker")
     training_jobs = sg.list_training_jobs()
     # print(training_jobs["TrainingJobSummaries"][0])
     # training job name
-    training_job_name = training_jobs["TrainingJobSummaries"][0]["TrainingJobName"]
+    training_job_name = training_jobs["TrainingJobSummaries"][0][
+        "TrainingJobName"
+    ]
     training_job_des = sg.describe_training_job(
-        TrainingJobName=training_job_name)
+        TrainingJobName=training_job_name
+    )
     print(training_job_des["ModelArtifacts"])
     print(training_job_des)
     return training_job_des["ModelArtifacts"]["S3ModelArtifacts"]
@@ -145,13 +148,15 @@ def create_model(model_name):
     # get model artifact
     model_artifact = get_trained_model()
     # create a model
-    sg = boto3.client('sagemaker')
-    sg.create_model(ModelName=model_name,
-                    ExecutionRoleArn=os.environ['SAGEMAKER_ROLE'],
-                    PrimaryContainer={
-                        "Image": image_uri,
-                        "ModelDataUrl": model_artifact}
-                    )
+    sg = boto3.client("sagemaker")
+    sg.create_model(
+        ModelName=model_name,
+        ExecutionRoleArn=os.environ["SAGEMAKER_ROLE"],
+        PrimaryContainer={
+            "Image": image_uri,
+            "ModelDataUrl": model_artifact,
+        },
+    )
 
 
 def batch_transform():
@@ -160,15 +165,15 @@ def batch_transform():
     """
     # transformer
     transformer = Transformer(
-        model_name='my-pca-model',
+        model_name="my-pca-model",
         instance_count=1,
-        instance_type='ml.c4.xlarge',
-        strategy="MultiRecord"
+        instance_type="ml.c4.xlarge",
+        strategy="MultiRecord",
     )
     transformer.transform(
         data=f's3://{os.environ["SAGEMAKER_BUCKET"]}/ecg/transform-input/',
         content_type="text/csv",
-        split_type="Line"
+        split_type="Line",
     )
 
 
@@ -178,8 +183,8 @@ if __name__ == "__main__":
         os.environ["SAGEMAKER_BUCKET"]
     ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
     # processing job
-    # process_data()
+    process_data()
     # train_pca_model()
     # get_trained_model()
     # create_model('my-pca-model')
-    batch_transform()
+    # batch_transform()

@@ -2,13 +2,14 @@
 # sagemaker pipeline by using stepfunctions
 import os
 import json
+import uuid
+import boto3
 import stepfunctions
 from stepfunctions.inputs import ExecutionInput
-from sagemaker import image_uris
-from sagemaker.processing import Processor
 from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.sklearn.processing import SKLearnProcessor
 
-# environment variable and configuration 
+# environment variable and configuration
 if "SAGEMAKER_ROLE" in os.environ and "BUCKET_NAME" in os.environ:
     pass
 else:
@@ -19,9 +20,15 @@ else:
         os.environ["REGION"] = config["REGION"]
 # parameter
 container_base_path = "/opt/ml/processing"
-input_data_uri = f's3://{os.environ["SAGEMAKER_BUCKET"]}/code/process_raw_data.py'
-input_code_uri = f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-raw-data'
-processing_output_path = f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-processed-data'
+input_code_uri = (
+    f's3://{os.environ["SAGEMAKER_BUCKET"]}/code/process_raw_data.py'
+)
+input_data_uri = (
+    f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-raw-data/'
+)
+processing_output_path = (
+    f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-processed-data'
+)
 
 # execution input for the statem machine
 execution_input = ExecutionInput(
@@ -29,61 +36,55 @@ execution_input = ExecutionInput(
         "PreprocessingJobName": str,
         "TrainingJobName": str,
         "LambdaFunctionName": str,
-        "ModelName": str
+        "ModelName": str,
     }
 )
 
 # create processing step
+
+
 def create_processing_step() -> stepfunctions.steps.ProcessingStep:
     """
     create processing step which process raw data
     """
-    # image uri
-    image_uri =  image_uris.retrieve(
-        framework="sklearn",
-        region=os.environ["REGION"],
-        version="0.23-1"
-    )
-    processor = Processor(
-        role=os.environ["SAGEMAKER_ROLE"],
-        image_uri=image_uri,
+    processor = SKLearnProcessor(
+        framework_version="0.23-1",
+        instance_type="ml.m5.xlarge",
         instance_count=1,
-        instance_type="ml.m4.xlarge",
-        entrypoint=[
-            "python",
-            f"{container_base_path}/input/process_raw_data.py",
-        ]
+        base_job_name="sklearn-abalone-process",
+        role=os.environ["SAGEMAKER_ROLE"],
     )
+
     step_process = stepfunctions.steps.ProcessingStep(
         state_id="PreprocessingData",
         processor=processor,
         job_name=execution_input["PreprocessingJobName"],
-        inputs=[ 
-           ProcessingInput(
-            input_name="train-data-input",
-            source=input_data_uri,
-            destination="/opt/ml/processing/input"
-           ),
-           ProcessingInput(
-            input_name="train-code-input",
-            source=input_code_uri,
-            destination="/opt/ml/processing/code"
-           )
-        ],
-        outputs = [
-            ProcessingOutput(
-                output_name="train-data-output",
-                source="/opt/ml/processiing/train",
-                destination=processing_output_path
+        inputs=[
+            ProcessingInput(
+                input_name="train-data-input",
+                source=input_data_uri,
+                destination="/opt/ml/processing/data",
             ),
+            ProcessingInput(
+                input_name="train-code-input",
+                source=input_code_uri,
+                destination="/opt/ml/processing/input",
+            ),
+        ],
+        outputs=[
             ProcessingOutput(
-                output_name="validation-data-output",
-                source="/opt/ml/processing/validation",
-                destination=processing_output_path
+                output_name="train",
+                source="/opt/ml/processing/output",
+                destination=processing_output_path,
             )
-        ]
+        ],
+        container_entrypoint=[
+            "python3",
+            "/opt/ml/processing/input/process_raw_data.py",
+        ],
     )
     return step_process
+
 
 # create training step
 
@@ -99,18 +100,30 @@ def create_workflow() -> stepfunctions.workflow.Workflow:
     # processing step
     processing_step = create_processing_step()
     # workflow
-    definition = stepfunctions.steps.Chain(
-        [processing_step]
-    )
+    definition = stepfunctions.steps.Chain([processing_step])
+    print(os.environ["SAGEMAKER_ROLE"])
     workflow = stepfunctions.workflow.Workflow(
-        name="StepFunctionWorkFlowDemo",
+        name="StepFunctionWorkFlowDemo001",
         definition=definition,
         role=os.environ["SAGEMAKER_ROLE"],
-        execution_input=execution_input
+        execution_input=execution_input,
     )
     return workflow
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
+    # upload code to s3
+    boto3.resource("s3").Bucket(
+        os.environ["SAGEMAKER_BUCKET"]
+    ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
     ml_workflow = create_workflow()
     print(ml_workflow.definition)
+    ml_workflow.create()
+    ml_workflow.execute(
+        inputs={
+            "PreprocessingJobName": f"PreprocessingJobName{uuid.uuid4()}",
+            "TrainingJobName": f"TrainingJobName{uuid.uuid4()}",
+            "LambdaFunctionName": "LambdaRecordModelName",
+            "ModelName": f"ModelName{uuid.uuid4()}",
+        }
+    )
