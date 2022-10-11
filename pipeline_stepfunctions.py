@@ -1,5 +1,7 @@
 # haimtran 10 OCT 2022
 # sagemaker pipeline by using stepfunctions
+# debug by check workflow definition in aws
+# and create a new workflow name
 import os
 import json
 import uuid
@@ -127,3 +129,4 @@ if __name__ == "__main__":
             "ModelName": f"ModelName{uuid.uuid4()}",
         }
     )
+    # ml_workflow.delete()
