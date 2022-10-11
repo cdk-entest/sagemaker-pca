@@ -2,6 +2,7 @@
 # sagemaker pipeline by using stepfunctions
 # debug by check workflow definition in aws
 # and create a new workflow name
+# this script can be run from a CodeBuild
 import os
 import json
 import uuid
@@ -165,20 +166,72 @@ def create_workflow() -> stepfunctions.workflow.Workflow:
     return workflow
 
 
+def create_end_point(model_name, endpoint_name):
+    """
+    create an endpoint
+    """
+
+    # sagemaker client
+    sg = boto3.client("sagemaker")
+    # create endpoint configuration
+    endpoint_config_name = "PCAEndpointConfigName"
+    #
+    try:
+        sg.create_endpoint_config(
+            EndpointConfigName=endpoint_config_name,
+            ProductionVariants=[
+                {
+                    "VariantName": "test",
+                    "ModelName": model_name,
+                    "InstanceType": "ml.m4.xlarge",
+                    "InitialInstanceCount": 1,
+                }
+            ],
+        )
+    except:
+        print("configuration already existed")
+        pass
+    # create an endpoint
+    endpoint = sg.create_endpoint(
+        EndpointName=endpoint_name,
+        EndpointConfigName=endpoint_config_name,
+    )
+    return endpoint
+
+
+def test_boto3_invoke_endpoint(endpoint_name):
+    """
+    test the pca endpoint
+    """
+    client = boto3.client("sagemaker-runtime")
+    resp = client.invoke_endpoint(
+        EndpointName=endpoint_name,
+        ContentType="text/csv",
+        Body="1,2,3,4",
+    )
+    print(json.loads(resp["Body"].read()))
+    return resp
+
+
 if __name__ == "__main__":
     # upload code to s3
     boto3.resource("s3").Bucket(
         os.environ["SAGEMAKER_BUCKET"]
     ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
-    ml_workflow = create_workflow()
-    print(ml_workflow.definition)
-    ml_workflow.create()
-    ml_workflow.execute(
-        inputs={
-            "PreprocessingJobName": f"PreprocessingJobName{uuid.uuid4()}",
-            "TrainingJobName": f"TrainingJobName{uuid.uuid4()}",
-            "LambdaFunctionName": "LambdaRecordModelName",
-            "ModelName": f"PCAModel{uuid.uuid4()}",
-        }
-    )
+    # ml_workflow = create_workflow()
+    # print(ml_workflow.definition)
+    # ml_workflow.create()
+    # ml_workflow.execute(
+    #    inputs={
+    #        "PreprocessingJobName": f"PreprocessingJobName{uuid.uuid4()}",
+    #        "TrainingJobName": f"TrainingJobName{uuid.uuid4()}",
+    #        "LambdaFunctionName": "LambdaRecordModelName",
+    #        "ModelName": f"PCAModel{uuid.uuid4()}",
+    #    }
+    # )
     # ml_workflow.delete()
+    # create_end_point(
+    #    model_name="PcalModel161fb49a-4865-4740-8f3f-2945e40fc8b9",
+    #    endpoint_name="pca-endpoint-test",
+    # )
+    test_boto3_invoke_endpoint("pca-endpoint-test")
