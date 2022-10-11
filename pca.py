@@ -7,8 +7,10 @@
 import json
 import os
 from time import strftime
+import numpy as np
 import boto3
 import sagemaker
+from sagemaker import PCAPredictor
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
 from sagemaker.processing import (
@@ -159,6 +161,58 @@ def create_model(model_name):
     )
 
 
+def create_end_point(model_name, endpoint_name):
+    """
+    create an endpoint
+    """
+
+    # sagemaker client
+    sg = boto3.client("sagemaker")
+    # create endpoint configuration
+    endpoint_config_name = "PCAEndpointConfigName"
+    sg.create_endpoint_config(
+        EndpointConfigName=endpoint_config_name,
+        ProductionVariants=[
+            {
+                "VariantName": "test",
+                "ModelName": "my-pca-model",
+                "InstanceType": "ml.m4.xlarge",
+                "InitialInstanceCount": 1,
+            }
+        ],
+    )
+    # create an endpoint
+    endpoint = sg.create_endpoint(
+        EndpointName=endpoint_name,
+        EndpointConfigName=endpoint_config_name,
+    )
+    return endpoint
+
+
+def test_boto3_invoke_endpoint(endpoint_name):
+    """
+    test the pca endpoint
+    """
+    client = boto3.client("sagemaker-runtime")
+    resp = client.invoke_endpoint(
+        EndpointName=endpoint_name,
+        ContentType="text/csv",
+        Body="1,2,3,4",
+    )
+    print(json.loads(resp["Body"].read()))
+    return resp
+
+
+def test_predictor_endpoint(endpoint_name):
+    """
+    predictor to predict
+    """
+    predictor = PCAPredictor(endpoint_name=endpoint_name)
+    resp = predictor.predict(np.array([1, 2, 3, 4]))
+    print(resp)
+    return resp
+
+
 def batch_transform():
     """
     pca batch_transform
@@ -183,8 +237,14 @@ if __name__ == "__main__":
         os.environ["SAGEMAKER_BUCKET"]
     ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
     # processing job
-    process_data()
+    # process_data()
     # train_pca_model()
     # get_trained_model()
     # create_model('my-pca-model')
     # batch_transform()
+    # endpoint = create_end_point(
+    #    model_name="pca-model-test", endpoint_name="pca-endpoint-test"
+    # )
+    # print(endpoint)
+    # test_boto3_invoke_endpoint(endpoint_name="pca-endpoint-test")
+    test_predictor_endpoint(endpoint_name="pca-endpoint-test")
