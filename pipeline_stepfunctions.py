@@ -6,6 +6,7 @@ import os
 import json
 import uuid
 import boto3
+from sagemaker.estimator import sagemaker
 import stepfunctions
 from stepfunctions.inputs import ExecutionInput
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -42,8 +43,6 @@ execution_input = ExecutionInput(
     }
 )
 
-# create processing step
-
 
 def create_processing_step() -> stepfunctions.steps.ProcessingStep:
     """
@@ -65,44 +64,97 @@ def create_processing_step() -> stepfunctions.steps.ProcessingStep:
             ProcessingInput(
                 input_name="train-data-input",
                 source=input_data_uri,
-                destination="/opt/ml/processing/data",
+                destination=f"{container_base_path}/data",
             ),
             ProcessingInput(
                 input_name="train-code-input",
                 source=input_code_uri,
-                destination="/opt/ml/processing/input",
+                destination=f"{container_base_path}/input",
             ),
         ],
         outputs=[
             ProcessingOutput(
                 output_name="train",
-                source="/opt/ml/processing/output",
+                source=f"{container_base_path}/output",
                 destination=processing_output_path,
             )
         ],
         container_entrypoint=[
             "python3",
-            "/opt/ml/processing/input/process_raw_data.py",
+            f"{container_base_path}/input/process_raw_data.py",
         ],
     )
     return step_process
 
 
 # create training step
+def create_training_step() -> stepfunctions.steps.TrainingStep:
+    """
+    create a training step
+    """
+    # get sklearn image uri
+    image_uri = sagemaker.estimator.image_uris.retrieve(
+        framework="pca",
+        region=os.environ["REGION"],
+        version="0.23-1",
+        instance_type="ml.m4.xlarge",
+    )
+    # create an estimator
+    estimator = sagemaker.estimator.Estimator(
+        image_uri=image_uri,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        # output_path="",
+        role=os.environ["SAGEMAKER_ROLE"],
+    )
+    # set hyperparameter
+    estimator.set_hyperparameters(
+        feature_dim=4, num_components=3, mini_batch_size=200
+    )
+    # create a train step
+    step_train = stepfunctions.steps.TrainingStep(
+        job_name=execution_input["TrainingJobName"],
+        state_id="PCATrainingStep",
+        estimator=estimator,
+        data={
+            "train": sagemaker.TrainingInput(
+                content_type="text/csv;label_size=0",
+                s3_data=f's3://{os.environ["SAGEMAKER_BUCKET"]}/pca-processed-data',
+            )
+        },
+    )
+    # return
+    return step_train
 
-# create model step
 
-# deploy model as sagemaker endpoint
+def create_model_step(
+    training_step: stepfunctions.steps.TrainingStep,
+) -> stepfunctions.steps.ModelStep:
+    """
+    create a model step
+    """
+    model_step = stepfunctions.steps.ModelStep(
+        state_id="PcaModelStep",
+        model=training_step.get_expected_model(),
+        model_name=execution_input["ModelName"],
+    )
+    return model_step
 
-# create a workflow by stepfunctions
+
 def create_workflow() -> stepfunctions.workflow.Workflow:
     """
     create workflow by stepfunctions
     """
     # processing step
     processing_step = create_processing_step()
+    # training step
+    training_step = create_training_step()
+    # model step
+    model_step = create_model_step(training_step)
     # workflow
-    definition = stepfunctions.steps.Chain([processing_step])
+    definition = stepfunctions.steps.Chain(
+        [processing_step, training_step, model_step]
+    )
     print(os.environ["SAGEMAKER_ROLE"])
     workflow = stepfunctions.workflow.Workflow(
         name="StepFunctionWorkFlowDemo001",
@@ -126,7 +178,7 @@ if __name__ == "__main__":
             "PreprocessingJobName": f"PreprocessingJobName{uuid.uuid4()}",
             "TrainingJobName": f"TrainingJobName{uuid.uuid4()}",
             "LambdaFunctionName": "LambdaRecordModelName",
-            "ModelName": f"ModelName{uuid.uuid4()}",
+            "ModelName": f"PCAModel{uuid.uuid4()}",
         }
     )
     # ml_workflow.delete()

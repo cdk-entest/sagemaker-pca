@@ -175,7 +175,7 @@ def create_end_point(model_name, endpoint_name):
         ProductionVariants=[
             {
                 "VariantName": "test",
-                "ModelName": "my-pca-model",
+                "ModelName": model_name,
                 "InstanceType": "ml.m4.xlarge",
                 "InitialInstanceCount": 1,
             }
