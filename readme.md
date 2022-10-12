@@ -1,5 +1,6 @@
 ---
 title: sagemaker processor and pca
+description: build a pipeline for PCA in sagemaker
 author: haimtran
 publishedDate: 05 OCT 2022
 date: 05/10/2022
@@ -7,12 +8,19 @@ date: 05/10/2022
 
 ## Introduction
 
-Build a simple pipeline for PCA
+[GitHub](https://github.com/cdk-entest/sagemaker-pca) this builds a simple pipeline for PCA
 
 - process raw data by processor and processing step
 - train model by estimator and training step
 - create a model by model step
 - create an endpoint and [invoke](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints-test-endpoints.htmlG) by boto3 or sagemaker predictor
+
+<LinkedImage
+  href="#"
+  height={400}
+  alt="Build a Pipeline for PCA in SageMaker"
+  src="/thumbnail/pca-sagemaker.png"
+/>
 
 ## Process Raw Data
 
