@@ -3,6 +3,7 @@
 # debug by check workflow definition in aws
 # and create a new workflow name
 # this script can be run from a CodeBuild
+# invoke for data format samed as for training
 import os
 import json
 import uuid
@@ -206,8 +207,10 @@ def test_boto3_invoke_endpoint(endpoint_name):
     client = boto3.client("sagemaker-runtime")
     resp = client.invoke_endpoint(
         EndpointName=endpoint_name,
+        # same format as used for training
         ContentType="text/csv",
         Body="1,2,3,4\n1,2,3,4\n2,3,4,5",
+        # Body=bytes('1,2,3,4', 'utf-8')
     )
     print(json.loads(resp["Body"].read()))
     return resp
