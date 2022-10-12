@@ -12,7 +12,7 @@ Build a simple pipeline for PCA
 - process raw data by processor and processing step
 - train model by estimator and training step
 - create a model by model step
-- create an endpoint and invoke by boto3 or sagemaker predictor
+- create an endpoint and [invoke](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints-test-endpoints.html) by boto3 or sagemaker predictor
 
 ## Process Raw Data
 
@@ -208,6 +208,14 @@ def test_boto3_invoke_endpoint(endpoint_name):
 
 ```
 
+## SageMaker Cli
+
+list endpoint
+
+```bash
+
+```
+
 ## References
 
 [1] (https://github.com/aws/amazon-sagemaker-examples/issues/1075)
@@ -223,3 +231,7 @@ def test_boto3_invoke_endpoint(endpoint_name):
 [6] (https://github.com/aws/sagemaker-training-toolkit/blob/master/ENVIRONMENT_VARIABLES.md#sm_resource_config)
 
 [7] (https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-training-algo-running-container.html)
+
+```
+
+```
