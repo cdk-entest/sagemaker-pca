@@ -207,7 +207,7 @@ def test_boto3_invoke_endpoint(endpoint_name):
     resp = client.invoke_endpoint(
         EndpointName=endpoint_name,
         ContentType="text/csv",
-        Body="1,2,3,4",
+        Body="1,2,3,4\n1,2,3,4\n2,3,4,5",
     )
     print(json.loads(resp["Body"].read()))
     return resp
@@ -215,9 +215,9 @@ def test_boto3_invoke_endpoint(endpoint_name):
 
 if __name__ == "__main__":
     # upload code to s3
-    boto3.resource("s3").Bucket(
-        os.environ["SAGEMAKER_BUCKET"]
-    ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
+    # boto3.resource("s3").Bucket(
+    #     os.environ["SAGEMAKER_BUCKET"]
+    # ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
     # ml_workflow = create_workflow()
     # print(ml_workflow.definition)
     # ml_workflow.create()
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     # )
     # ml_workflow.delete()
     # create_end_point(
-    #    model_name="PcalModel161fb49a-4865-4740-8f3f-2945e40fc8b9",
+    #    model_name="pcalmodel161fb49a-4865-4740-8f3f-2945e40fc8b9",
     #    endpoint_name="pca-endpoint-test",
     # )
     test_boto3_invoke_endpoint("pca-endpoint-test")
