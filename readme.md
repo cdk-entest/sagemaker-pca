@@ -16,7 +16,7 @@ Build a simple pipeline for PCA
 
 ## Process Raw Data
 
-process raw data stored in S3 by using a SKLearnProcessor and wrap into a processing step of the stepfunctions
+process raw data stored in S3 by using a SKLearnProcessor and wrap into a processing step of the stepfunctions. It is possible to set instance_count greater than 1 and data distributed into instances.
 
 ```py
 def create_processing_step() -> stepfunctions.steps.ProcessingStep:
@@ -27,7 +27,7 @@ def create_processing_step() -> stepfunctions.steps.ProcessingStep:
         framework_version="0.23-1",
         instance_type="ml.m5.xlarge",
         instance_count=1,
-        base_job_name="sklearn-abalone-process",
+        base_job_name=execution_input["PreprocessingJobName"],
         role=os.environ["SAGEMAKER_ROLE"],
     )
 

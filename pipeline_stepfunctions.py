@@ -54,7 +54,7 @@ def create_processing_step() -> stepfunctions.steps.ProcessingStep:
         framework_version="0.23-1",
         instance_type="ml.m5.xlarge",
         instance_count=1,
-        base_job_name="sklearn-abalone-process",
+        base_job_name=execution_input["PreprocessingJobName"],
         role=os.environ["SAGEMAKER_ROLE"],
     )
 
