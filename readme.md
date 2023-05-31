@@ -242,6 +242,48 @@ delete endpoint configuration
 aws delete-endpoint-config --endpoint-config-name $ENDPOINT_CONFIG_NAME
 ```
 
+## SageMaker Role
+
+To create a pipeline using stepfunction, role for this script needs
+
+- SageMaker permissions
+- States (StepFunction) permissions
+- CloudWatch permissions
+
+Let create a role by using CDK
+
+```ts
+const role = new aws_iam.Role(this, "RoleForPCAPipelineDemo", {
+  roleName: "RoleForPCAPipelineDemo",
+  assumedBy: new aws_iam.CompositePrincipal(
+    new aws_iam.ServicePrincipal("states.amazonaws.com"),
+    new aws_iam.ServicePrincipal("sagemaker.amazonaws.com")
+  ),
+});
+
+role.addManagedPolicy(
+  aws_iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSageMakerFullAccess")
+);
+
+// logs
+role.addManagedPolicy(
+  aws_iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchEventsFullAccess")
+);
+
+// create pipeline using stepfunction
+role.addManagedPolicy(
+  aws_iam.ManagedPolicy.fromAwsManagedPolicyName("AWSStepFunctionsFullAccess")
+);
+
+role.addToPolicy(
+  new aws_iam.PolicyStatement({
+    effect: Effect.ALLOW,
+    resources: ["*"],
+    actions: ["s3:*"],
+  })
+);
+```
+
 ## References
 
 [1] (https://github.com/aws/amazon-sagemaker-examples/issues/1075)

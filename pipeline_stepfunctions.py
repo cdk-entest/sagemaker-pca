@@ -13,6 +13,7 @@ import stepfunctions
 from stepfunctions.inputs import ExecutionInput
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn.processing import SKLearnProcessor
+from stepfunctions.steps import ProcessingStep
 
 # environment variable and configuration
 if "SAGEMAKER_ROLE" in os.environ and "BUCKET_NAME" in os.environ:
@@ -54,11 +55,11 @@ def create_processing_step() -> stepfunctions.steps.ProcessingStep:
         framework_version="0.23-1",
         instance_type="ml.m5.xlarge",
         instance_count=1,
-        base_job_name=execution_input["PreprocessingJobName"],
+        base_job_name="pca-sklearn-processsor",
         role=os.environ["SAGEMAKER_ROLE"],
     )
 
-    step_process = stepfunctions.steps.ProcessingStep(
+    step_process = ProcessingStep(
         state_id="PreprocessingData",
         processor=processor,
         job_name=execution_input["PreprocessingJobName"],
@@ -216,25 +217,41 @@ def test_boto3_invoke_endpoint(endpoint_name):
     return resp
 
 
+def upload_data_code_to_s3():
+    """
+    """
+    s3_client = boto3.client("s3")
+    s3_client.upload_file(
+        "./process_raw_data.py", 
+        os.environ["SAGEMAKER_BUCKET"], 
+        "code/process_raw_data.py"
+    )
+    s3_client.upload_file(
+        "./171A_raw.csv",
+        os.environ["SAGEMAKER_BUCKET"],
+        "pca-raw-data/171A_raw.csv"
+    )
+
+
 if __name__ == "__main__":
-    # upload code to s3
-    # boto3.resource("s3").Bucket(
-    #     os.environ["SAGEMAKER_BUCKET"]
-    # ).upload_file("./process_raw_data.py", "code/process_raw_data.py")
-    # ml_workflow = create_workflow()
-    # print(ml_workflow.definition)
-    # ml_workflow.create()
-    # ml_workflow.execute(
-    #    inputs={
-    #        "PreprocessingJobName": f"PreprocessingJobName{uuid.uuid4()}",
-    #        "TrainingJobName": f"TrainingJobName{uuid.uuid4()}",
-    #        "LambdaFunctionName": "LambdaRecordModelName",
-    #        "ModelName": f"PCAModel{uuid.uuid4()}",
-    #    }
-    # )
+    # upload data and code to s3
+    # upload_data_code_to_s3()
+    # create workflow 
+    ml_workflow = create_workflow()
+    print(ml_workflow.definition)
+    # run workflow 
+    ml_workflow.create()
+    ml_workflow.execute(
+       inputs={
+           "PreprocessingJobName": f"PreprocessingJobName{uuid.uuid4()}",
+           "TrainingJobName": f"TrainingJobName{uuid.uuid4()}",
+           "LambdaFunctionName": "LambdaRecordModelName",
+           "ModelName": f"PCAModel{uuid.uuid4()}",
+       }
+    )
     # ml_workflow.delete()
     # create_end_point(
     #    model_name="pcalmodel161fb49a-4865-4740-8f3f-2945e40fc8b9",
     #    endpoint_name="pca-endpoint-test",
     # )
-    test_boto3_invoke_endpoint("pca-endpoint-test")
+    # test_boto3_invoke_endpoint("pca-endpoint-test")
